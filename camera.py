@@ -11,7 +11,6 @@ while (True):
     (thresh, blackAndWhiteFrame) = cv2.threshold(grayFrame, 127, 255, cv2.THRESH_BINARY)
 
     cv2.imshow('video bw', blackAndWhiteFrame)
-    cv2.imshow('video original', frame)
 
     if cv2.waitKey(1) == 27:
         break
