@@ -36,48 +36,49 @@ def preProcessing(img):
 
     return imgPre
 
+def count():
+    for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+        img = frame.array
+        imgPre = preProcessing(img)
+        imgContours, conFound = cvzone.findContours(img, imgPre, minArea=20)
 
-for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-    img = frame.array
-    imgPre = preProcessing(img)
-    imgContours, conFound = cvzone.findContours(img, imgPre, minArea=20)
+        totalMoney = 0
+        imgCount = np.zeros((480, 640, 3), np.uint8)
 
-    totalMoney = 0
-    imgCount = np.zeros((480, 640, 3), np.uint8)
+        if conFound:
+            for count, contour in enumerate(conFound):
+                peri = cv2.arcLength(contour['cnt'], True)
+                approx = cv2.approxPolyDP(contour['cnt'], 0.02 * peri, True)
 
-    if conFound:
-        for count, contour in enumerate(conFound):
-            peri = cv2.arcLength(contour['cnt'], True)
-            approx = cv2.approxPolyDP(contour['cnt'], 0.02 * peri, True)
+                if len(approx) > 8 :
+                    area = contour['area']
+                    x, y, w, h = contour['bbox']
+                    imgCrop = img[y:y + h, x:x + w]
+                    imgColor, mask = myColorFinder.update(imgCrop, hsvVals)
+                    whitePixelCount = cv2.countNonZero(mask)
 
-            if len(approx) > 8 :
-                area = contour['area']
-                x, y, w, h = contour['bbox']
-                imgCrop = img[y:y + h, x:x + w]
-                imgColor, mask = myColorFinder.update(imgCrop, hsvVals)
-                whitePixelCount = cv2.countNonZero(mask)
+                    print(area)
 
-                print(area)
+                    if 300 < area < 450:
+                        totalMoney += 0.01  # penny
+                    elif 450 < area < 800:
+                        totalMoney += 0.05  # nickel,
+                    elif 800 < area < 2000:
+                        totalMoney += 0.10  # dime
+                    elif area > 2800:
+                        totalMoney += 0.25  # quarter
 
-                if 300 < area < 450:
-                    totalMoney += 0.01  # penny
-                elif 450 < area < 800:
-                    totalMoney += 0.05  # nickel,
-                elif 800 < area < 2000:
-                    totalMoney += 0.10  # dime
-                elif area > 2800:
-                    totalMoney += 0.25  # quarter
+        imgStacked = cvzone.stackImages([img, imgPre, imgContours, imgCount], 2, 1)
+        cvzone.putTextRect(imgStacked, f'Dollar.{totalMoney}', (50, 50))
 
-    imgStacked = cvzone.stackImages([img, imgPre, imgContours, imgCount], 2, 1)
-    cvzone.putTextRect(imgStacked, f'Dollar.{totalMoney}', (50, 50))
+        cv2.imshow("Image", imgStacked)
+        # cv2.imshow("imgColor", imgColor)
 
-    cv2.imshow("Image", imgStacked)
-    # cv2.imshow("imgColor", imgColor)
+        rawCapture.truncate(0)
+        key = cv2.waitKey(1)
+        if key == ord("q"):
+            break
 
-    rawCapture.truncate(0)
-    key = cv2.waitKey(1)
-    if key == ord("q"):
-        break
-
-camera.close()
-cv2.destroyAllWindows()
+    camera.close()
+    cv2.destroyAllWindows()
+    return totalMoney
